@@ -1,14 +1,20 @@
+import com.sun.scenario.effect.impl.sw.sse.SSEBlend_SRC_OUTPeer;
+
 import java.io.*;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.Collections;
+import org.apache.commons.math3.analysis.interpolation.LinearInterpolator;
+import org.apache.commons.math3.analysis.interpolation.SplineInterpolator;
+import org.apache.commons.math3.analysis.polynomials.PolynomialSplineFunction;
 
 import static java.lang.Math.abs;
 
 public class SiddhiMetrics {
 
-    static final String DB_URL = "jdbc:mysql://localhost:3306/MetricsDB?autoReconnect=true&useSSL=false";
-    static final String USER = "sarangan";
-    static final String PASS = "sarangan";
+    static final String DB_URL = "jdbc:mysql://localhost:3306/performance?autoReconnect=true&useSSL=false";
+    static final String USER = "root";
+    static final String PASS = "87654321";
     Connection conn=null;
 
 
@@ -19,8 +25,10 @@ public class SiddhiMetrics {
             while (rs1.next() && (k<3317)) {
                 k=k+1;
                 long iij = rs1.getLong("iijtimestamp");
-                long m2 = rs1.getLong("m2");
-                long m3 = rs1.getLong("m3");
+                long m2 = (long)(rs1.getFloat("m2")*1000);
+                long m3 = (long)(rs1.getFloat("m3")*1000);
+//                System.out.println("WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW"+m2);
+               // System.out.println("!!!!!!!!!!!!!!!!"+rs1.getFloat("m3"));
                 long m4 = rs1.getLong("m4");
                 long m5 = rs1.getLong("m5");
                 long m6 = rs1.getLong("m6");
@@ -33,10 +41,12 @@ public class SiddhiMetrics {
                 long m13 = rs1.getLong("m13");
                 long m14 = rs1.getLong("m14");
                 long m15 = rs1.getLong("m15");
+                long m16 = (long)(rs1.getFloat("m16")*1000);
 
                 ArrayList<Long> temp = new ArrayList<Long>();
 
                 temp.add(iij);
+                //temp.add(m1);
                 temp.add(m2);
                 temp.add(m3);
                 temp.add(m4);
@@ -51,6 +61,7 @@ public class SiddhiMetrics {
                 temp.add(m13);
                 temp.add(m14);
                 temp.add(m15);
+                temp.add(m16);
 
                 arrayList_exec_paral.add(temp);
             }
@@ -78,6 +89,7 @@ public class SiddhiMetrics {
             BufferedWriter bw = null;
             FileWriter fw = null;
             if (!file.exists()) {
+                file.getParentFile().mkdirs();
                 file.createNewFile();
             }
             fw = new FileWriter(file.getAbsoluteFile(), true);
@@ -87,8 +99,8 @@ public class SiddhiMetrics {
             bw.write("Average Time stamp, " +
                     "Standardized X value(s), " +
                     "Standardized X value(min)," +
-                    "Throughput in this window (thousands events/second), " +
-                    "Entire throughput for the run (thousands events/second), " +
+                    "Throughput in this window (*1000), " +
+                    "Entire throughput for the run (*1000), " +
                     "Total elapsed time(s)," +
                     "Total Events," +
                     "Average latency per event in this window(ms)," +
@@ -100,14 +112,15 @@ public class SiddhiMetrics {
                     "AVG latency in this window(95), " +
                     "AVG latency in this window(99), " +
                     "Total memory with the Oracle JVM, " +
-                    "Free memory with the Oracle JVM " );
+                    "Free memory with the Oracle JVM , " +
+                    "CPU Usage (*1000)" );
 
             bw.write("\n");
             bw.flush();
 
 
             ArrayList<ArrayList<Long>> arrayList_1_1 = new ArrayList<ArrayList<Long>>();
-            String query1 = "SELECT * FROM metricstable where exec=" + exec+ " and paralllel=" + para;
+            String query1 = "SELECT * FROM metricstable where exec=" + exec+ " and parallel=" + para;
             ResultSet rs1 = st.executeQuery(query1);
             individualSiddhiMetric(rs1, arrayList_1_1);
 
@@ -116,33 +129,45 @@ public class SiddhiMetrics {
 
 
             //To consider all the values of siddhi metrics
-            if (tmp_standard_array.size() < arrayList_1_1.size()){
+//            if (tmp_standard_array.size() < arrayList_1_1.size()){
+
 
                 long len1=arrayList_1_1.size();
                 long len2 =tmp_standard_array.size();
+                int shift= (int)(len2/len1);
 
+                if (len1 < len2){
+                    flag = true;
+                    int standardIndex = 0;
+                    while(standardIndex < arrayList_1_1.size()){
 
-                int shift= (int)(len1/len2);
+                        arrayListRefined.add(arrayList_1_1.get(standardIndex));
+                        standardIndex += shift;
 
-                while (shift>1){
-                    flag=true;
-                    arrayListRefined.add(arrayList_1_1.get((shift-1)));
-                    shift=shift+1;
-
-                    if(shift==arrayList_1_1.size()){
-                        break;
                     }
                 }
-            }
 
-            if (flag){
-                fileWriting(tmp_standard_array,xValue_standard_arrayFile,
-                        xValue_standard_arrayFile_s,arrayListRefined,bw);
 
-            }else{
-                fileWriting(tmp_standard_array,xValue_standard_arrayFile,
-                        xValue_standard_arrayFile_s,arrayList_1_1,bw);
-            }
+
+              System.out.println("Added to Refined  &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&& "+ arrayListRefined.size() +"-original"+ arrayList_1_1.size()+ "-stand"+tmp_standard_array.size());
+ //               flag=true;
+
+//            }
+
+
+
+
+            fileWriting(tmp_standard_array,xValue_standard_arrayFile,
+                    xValue_standard_arrayFile_s,arrayList_1_1,bw);
+
+//            if (flag){
+//                fileWriting(tmp_standard_array,xValue_standard_arrayFile,
+//                        xValue_standard_arrayFile_s,arrayListRefined,bw);
+//
+//            }else{
+//                fileWriting(tmp_standard_array,xValue_standard_arrayFile,
+//                        xValue_standard_arrayFile_s,arrayList_1_1,bw);
+//            }
 
 
         } catch (ClassNotFoundException e) {
@@ -162,31 +187,134 @@ public class SiddhiMetrics {
                              ArrayList<ArrayList<Long>> arrayList_1_1,
                              BufferedWriter bw){
 
+        ArrayList<Long> tmp_standard_array_reversed;
+        tmp_standard_array_reversed = tmp_standard_array;
+
+        //Collections.reverse(tmp_standard_array_reversed);
+
+        int size = tmp_standard_array_reversed.size();
+        for (int reverseIndex = 0; reverseIndex < reverseIndex / 2; reverseIndex++) {
+            final Long number = tmp_standard_array_reversed.get(reverseIndex);
+            tmp_standard_array_reversed.set(reverseIndex, tmp_standard_array_reversed.get(size - reverseIndex - 1)); // swap
+            tmp_standard_array_reversed.set(size - reverseIndex - 1, number); // swap
+        }
+
+
+
+
+
         try {
 
-            for (int i = 0; i < arrayList_1_1.size(); i++) {
+            for (int i = 0; i < tmp_standard_array_reversed.size(); i++) {
                 StringBuilder tempStringBuilder = new StringBuilder();
-                tempStringBuilder.append(tmp_standard_array.get(i));
+                tempStringBuilder.append(tmp_standard_array_reversed.get(i));
                 tempStringBuilder.append(",");
                 tempStringBuilder.append(xValue_standard_arrayFile.get(i));
                 tempStringBuilder.append(",");
                 tempStringBuilder.append(xValue_standard_arrayFile_s.get(i));
                 tempStringBuilder.append(",");
+                System.out.println("^^^^^^^^"+tmp_standard_array_reversed.get(i));
+
 
                 for (int j = 1; j < arrayList_1_1.get(i).size(); j++) {
 
-                    double temp = standarizeValues(arrayList_1_1.get(i).get(0), arrayList_1_1.get(i).get(1),
-                            tmp_standard_array.get(i), arrayList_1_1.get(i).get(j),
-                            arrayList_1_1.get(i).get(j));
+
+//                    double[] a = new double[arrayList_1_1.size()];
+//                    double[] b = new double[arrayList_1_1.size()];
+//
+//                    for (int k = 0; k < arrayList_1_1.size(); k++) {
+//                        a[k]=arrayList_1_1.get(k).get(0);
+//                        System.out.println("(((((((((((((((((("+arrayList_1_1.get(k).get(j));
+//                        b[k]=arrayList_1_1.get(k).get(j);
+//                    }
+//
+//                    SplineInterpolator interpolator = new SplineInterpolator();
+//                    PolynomialSplineFunction estimateFunc = interpolator.interpolate(a,b);
+
+                        long t3= tmp_standard_array_reversed.get(i);
+                        long t2=-1 ;
+                        long t1 = -1;
+                        double temp = -1;
+                        boolean equality = false;
+                        int indexD1=-1;
+                        int indexD2=-1;
+                        long d1= -1;
+                        long d2= -1;
+                    for (int k = 0; k < arrayList_1_1.size(); k++) {
+                        if(arrayList_1_1.get(k).get(0)/1000 == t3) {
+                            temp = t3;
+                            equality = true;
+                            break;
+                        }
+                    }
+//                    for(int g=0; g<arrayList_1_1.size();g++)
+//                    {
+//                        System.out.println("----"+arrayList_1_1.get(g).get(0)/1000);}
+
+
+                    if(!equality){
+                        for (int k = 1; k < arrayList_1_1.size(); k++) {
+                            if(arrayList_1_1.get(k).get(0)/1000 > t3) {
+                                t2 = arrayList_1_1.get(k).get(0)/1000;
+                                t1 = arrayList_1_1.get(k-1).get(0)/1000;
+                                System.out.println("t1-----t2"+t1+" = "+t2);
+                                indexD1=k-1;
+                                indexD2=k;
+
+                                break;
+
+                            }
+                        }
+
+                    }
+
+
+
+                    if (!equality) {
+                        d1=arrayList_1_1.get(indexD1).get(j);
+                        d2=arrayList_1_1.get(indexD2).get(j);
+                        temp =standarizeValues(t1,t2,t3,d1,d2,j);
+                        if(j==1){
+                            System.out.println("NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN"+temp);
+                        }
+
+                        System.out.println("Builder "+d1+" -"+d2);
+                    }
+
+
+
+
+
+//                    double temp = standarizeValues((arrayList_1_1.get(i).get(0))/1000,(arrayList_1_1.get(i+1).get(0))/1000 ,
+//                            tmp_standard_array_reversed.get(i), arrayList_1_1.get(i).get(j),
+//                            arrayList_1_1.get(i+1).get(j));
+//
+//                    System.out.println("First *********** "+(arrayList_1_1.get(i).get(0))/1000);
+//                    System.out.println("Second ********** "+(arrayList_1_1.get(i+1).get(0))/1000);
+//                    System.out.println("Third *********** "+tmp_standard_array.get(i));
+
+
+
                     tempStringBuilder.append(temp);
                     tempStringBuilder.append(",");
 
 
+
+
+
                 }
 
+                System.out.println("First *********** "+(arrayList_1_1.get(i).get(0))/1000);
+                System.out.println("Second ********** "+(arrayList_1_1.get(i+1).get(0))/1000);
+                System.out.println("Third *********** "+tmp_standard_array_reversed.get(i));
+                System.out.println("----------------------"+ arrayList_1_1.size()+"  ----- "+tmp_standard_array.size());
+
                 System.out.println("Writing the data");
+                System.out.println("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"+ tempStringBuilder.toString());
 
                 bw.write(tempStringBuilder.toString());
+
+
                 bw.write("\n");
                 bw.flush();
 
@@ -199,14 +327,23 @@ public class SiddhiMetrics {
 
 
 
-    public double standarizeValues(long t1,long t2,long t3, double d1,double d2){
+    public double standarizeValues(long t1,long t2,long t3, double d1,double d2, int j){
+
         double d3=0;
+        System.out.println("Original Value ++++++++ "+t1+" - "+d1);
+        System.out.println("Original Value1 +++++++ "+t2+" - "+d2);
         try {
-            d3 = d3 + ((abs(t3 - t2) / abs(t2 - t1)) * abs(d2 - d1)) + d2;
+            if(j!=4) {
+                d3 = d3 + ((t3 - t2) * 1.0 / (t2 - t1)) * (d2 - d1) + d2;
+            } else{
+                d3 = d3 + ((t3 - t2) / (t2 - t1)) * (d2 - d1) + d2;
+            }
         }
         catch(ArithmeticException e){
             d3 = d1;
+            e.printStackTrace();
         }
+        System.out.println("Standerdized Value ++++++++ "+t3+" - "+d3);
         return d3;
     }
 }

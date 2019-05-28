@@ -10,6 +10,7 @@ public class FileRead {
         try (BufferedReader reader = new BufferedReader(new FileReader(source_file))) {
             while (true) {
                 String line = reader.readLine();
+                //System.out.println("This is the line" + line);
 
 
                 try {
@@ -25,6 +26,7 @@ public class FileRead {
 
                 try {
                     long  avgtimestamp=Integer.parseInt(line.substring(25, 35));
+                    //System.out.println("Line" + avgtimestamp);
                     tmp_standard_array.add(avgtimestamp);
                     Double  value=Double.parseDouble(line.substring(37,line.length()-2));
                     array.add(value);
@@ -126,6 +128,8 @@ public class FileRead {
                 try {
 
                     Double  value=Double.parseDouble(line.substring(37,line.length()-2));
+                   // System.out.println("CPU uti"+ value);
+                    //System.out.println(line);
                     array2.add(value);
                     if(array2.size()>1){
                         value=(value+array2.get(0))/2;
